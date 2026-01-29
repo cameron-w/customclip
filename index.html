@@ -226,17 +226,13 @@
 
     .hidden{ display:none !important; }
 
-    /* A: Coach top card spans both columns in coach mode */
     #coachTopCard{ grid-column: 1 / -1; }
-    #coachTopCard.hidden{ display:none !important; }
     #coachTopCard .playerBox{ max-width:1100px; margin:0 auto; }
 
-    /* IMPORTANT: In player mode, make the video big and remove the top "View Video" card completely */
     body.player-mode .wrap{ max-width:1100px; }
     body.player-mode .grid{ grid-template-columns:1fr; max-width:1100px; margin:0 auto; }
-    body.player-mode #coachTopCard{ display:none !important; } /* hide View Video in player mode */
+    body.player-mode #coachTopCard{ display:none !important; }
 
-    /* Player mode: force the player slot to be full width */
     body.player-mode .playerWrap{ max-width:1100px; margin:0 auto; }
     body.player-mode #playerModeSlot{ width:100%; }
     body.player-mode #playerModeSlot .playerBox{
@@ -245,10 +241,7 @@
       margin:0 auto;
       aspect-ratio:16/9;
     }
-
-    /* Stop the "small card" effect: give the player card a wider feel in player mode */
     body.player-mode .card{ width:100%; }
-
   </style>
 </head>
 
@@ -264,7 +257,6 @@
 
     <div class="grid">
 
-      <!-- A: Coach top video -->
       <div class="card" id="coachTopCard">
         <div class="sectionTitle">View Video</div>
 
@@ -279,8 +271,22 @@
         </div>
       </div>
 
-      <!-- B: Builder -->
       <div class="card" id="builderCard">
+
+        <!-- MOVED: Mark segment panel now ABOVE the YouTube URL loader -->
+        <div class="card" id="markPanel" style="padding:12px; margin-top:0; background:rgba(2,6,23,.18);">
+          <div class="label" style="margin-top:0;">Mark segment from the video (Coach mode)</div>
+          <div class="btns" style="margin-top:8px;">
+            <button id="rew2" disabled>-2s</button>
+            <button id="fwd2" disabled>+2s</button>
+            <button id="markStart" class="primary" disabled>Set Start</button>
+            <button id="markEnd" class="primary" disabled>Set End</button>
+          </div>
+          <div class="hint" style="margin-top:8px;">
+            Pause at the moment, click Set Start. Keep watching, pause, click Set End. Then add title and instruction text and click Add segment.
+          </div>
+        </div>
+
         <div class="label">YouTube URL or Video ID</div>
         <input id="ytInput" type="text" placeholder="Paste a YouTube link (or just the video ID)" />
 
@@ -309,19 +315,6 @@
         <div class="btns">
           <button id="addSeg" class="primary">Add segment</button>
           <button id="clearSegs">Clear segments</button>
-        </div>
-
-        <div class="card" id="markPanel" style="padding:12px; margin-top:12px; background:rgba(2,6,23,.18);">
-          <div class="label" style="margin-top:0;">Mark segment from the video (Coach mode)</div>
-          <div class="btns" style="margin-top:8px;">
-            <button id="rew2" disabled>-2s</button>
-            <button id="fwd2" disabled>+2s</button>
-            <button id="markStart" class="primary" disabled>Set Start</button>
-            <button id="markEnd" class="primary" disabled>Set End</button>
-          </div>
-          <div class="hint" style="margin-top:8px;">
-            Pause at the moment, click Set Start. Keep watching, pause, click Set End. Then add title and instruction text and click Add segment.
-          </div>
         </div>
 
         <div class="label" style="margin-top:12px;">Share settings</div>
@@ -359,7 +352,6 @@
         </div>
       </div>
 
-      <!-- C: Player preview -->
       <div class="card playerWrap">
         <div id="previewPlaceholder" class="previewBox">
           <div style="font-weight:900; font-size:14px; margin-bottom:6px; color:var(--text);">Player preview</div>
@@ -371,7 +363,6 @@
           </div>
         </div>
 
-        <!-- In player mode, the video is inserted here as full width -->
         <div id="playerModeSlot"></div>
 
         <div class="controls">
@@ -548,7 +539,6 @@
         if (coachHintBelow) coachHintBelow.style.display="none";
         if (previewPlaceholder) previewPlaceholder.classList.add("hidden");
 
-        // Move the player box into the player slot (big)
         if (playerModeSlot && coachPlayerSlot && coachPlayerSlot.parentElement !== playerModeSlot){
           playerModeSlot.appendChild(coachPlayerSlot);
         }
@@ -562,7 +552,6 @@
         if (coachHintBelow) coachHintBelow.style.display="block";
         if (previewPlaceholder) previewPlaceholder.classList.toggle("hidden", isLoadedReplay);
 
-        // Return the player to coach top card
         if (coachTopCard && coachPlayerSlot && coachPlayerSlot.parentElement !== coachTopCard){
           const title = coachTopCard.querySelector(".sectionTitle");
           if (title && title.nextSibling){
@@ -621,7 +610,7 @@
           <span style="color:var(--muted); font-weight:800;">${idx===activeIndex ? "Now" : "Play"}</span>
         `;
         btn.addEventListener("click", ()=>{
-          if(showNotes) showInstruction(idx, true);
+          if(showNotes) showInstruction(idx);
           else gotoSegment(idx, true);
         });
         chapters.appendChild(btn);
@@ -781,30 +770,8 @@
       if(play) player.playVideo();
     }
 
-    function nextSegment(){
-      if(!isLoadedReplay) return;
-      if(activeIndex < segments.length-1){
-        if(showNotes) showInstruction(activeIndex+1, true);
-        else gotoSegment(activeIndex+1, true);
-      }else{
-        player.pauseVideo();
-        setStatus(playerStatus,"Reached the final segment end.","ok");
-      }
-    }
-
-    function prevSegment(){
-      if(!isLoadedReplay) return;
-      if(activeIndex>0){
-        if(showNotes) showInstruction(activeIndex-1, true);
-        else gotoSegment(activeIndex-1, true);
-      }else{
-        if(showNotes) showInstruction(0, true);
-        else gotoSegment(0, true);
-      }
-    }
-
     function startTicking(){
-      stopTicking();
+      if(tickTimer) clearInterval(tickTimer);
       tickTimer=setInterval(()=>{
         if(!player || !isLoadedReplay || segments.length===0) return;
         const s=segments[activeIndex];
@@ -814,11 +781,10 @@
           player.seekTo(s.start,true);
           return;
         }
-
         if(t >= s.end - 0.12){
           player.pauseVideo();
           if(activeIndex < segments.length-1){
-            if(showNotes) showInstruction(activeIndex+1, false);
+            if(showNotes) showInstruction(activeIndex+1);
             else gotoSegment(activeIndex+1, true);
           }else{
             setStatus(playerStatus,"Replay finished.","ok");
@@ -827,21 +793,26 @@
       },200);
     }
 
-    function stopTicking(){
-      if(tickTimer) clearInterval(tickTimer);
-      tickTimer=null;
-    }
-
-    prevBtn.addEventListener("click", prevSegment);
-    nextBtn.addEventListener("click", nextSegment);
+    prevBtn.addEventListener("click", ()=> {
+      if(!isLoadedReplay) return;
+      const next = Math.max(0, activeIndex-1);
+      if(showNotes) showInstruction(next);
+      else gotoSegment(next, true);
+    });
+    nextBtn.addEventListener("click", ()=> {
+      if(!isLoadedReplay) return;
+      const next = Math.min(segments.length-1, activeIndex+1);
+      if(showNotes) showInstruction(next);
+      else gotoSegment(next, true);
+    });
     playBtn.addEventListener("click", ()=> player && player.playVideo && player.playVideo());
     pauseBtn.addEventListener("click", ()=> player && player.pauseVideo && player.pauseVideo());
 
     window.addEventListener("keydown",(e)=>{
       if(e.target && (e.target.tagName==="INPUT" || e.target.tagName==="TEXTAREA")) return;
       const k=e.key.toLowerCase();
-      if(k==="n") nextSegment();
-      if(k==="p") prevSegment();
+      if(k==="n") nextBtn.click();
+      if(k==="p") prevBtn.click();
       if(k===" "){
         e.preventDefault();
         const state=player && player.getPlayerState ? player.getPlayerState() : null;
@@ -868,8 +839,8 @@
     }
 
     function hideOverlay(){ overlay.classList.remove("show"); }
-    document.getElementById("overlayClose").addEventListener("click", hideOverlay);
-    document.getElementById("overlayPlay").addEventListener("click", ()=>{
+    overlayClose.addEventListener("click", hideOverlay);
+    overlayPlay.addEventListener("click", ()=>{
       if(pendingIndex===null) return;
       hideOverlay();
       gotoSegment(pendingIndex, true);
@@ -881,8 +852,6 @@
         setStatus(playerStatus,"Player is not ready yet. If this persists, refresh the page.","warn");
         return;
       }
-      if(!id || !segs || segs.length===0) return;
-
       isLoadedReplay=true;
       videoId=id;
       segments=segs;
@@ -892,14 +861,12 @@
 
       renderSegments();
       refreshShareControls();
-
       setStatus(playerStatus,"Loaded replay. Auto-jump is active.","ok");
       enablePlayerControls(true);
 
       player.loadVideoById({ videoId: videoId, startSeconds: segments[0].start });
       updateNowPlaying();
       startTicking();
-
       if(showNotes) showInstruction(0);
 
       applyModeUI();
@@ -944,9 +911,9 @@
       const cuts=params.get("cuts");
       const labels=params.get("labels");
       const notes=params.get("notes");
-
       const m=params.get("mode");
       const sn=params.get("shownotes");
+
       mode = (m==="player") ? "player" : "coach";
       showNotes = (sn==="0") ? false : true;
       applyModeUI();
@@ -1003,13 +970,6 @@
             setStatus(playerStatus,"Player ready. Paste a URL and click Load video.","ok");
             enablePlayerControls(false);
 
-            const params=new URLSearchParams(window.location.search);
-            const m=params.get("mode");
-            const sn=params.get("shownotes");
-            mode = (m==="player") ? "player" : "coach";
-            showNotes = (sn==="0") ? false : true;
-
-            applyModeUI();
             loadFromQueryIfPresent();
           },
           onError:(e)=>{
