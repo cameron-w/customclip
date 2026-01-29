@@ -226,14 +226,29 @@
 
     .hidden{ display:none !important; }
 
+    /* A: Coach top card spans both columns in coach mode */
     #coachTopCard{ grid-column: 1 / -1; }
     #coachTopCard.hidden{ display:none !important; }
     #coachTopCard .playerBox{ max-width:1100px; margin:0 auto; }
 
+    /* IMPORTANT: In player mode, make the video big and remove the top "View Video" card completely */
+    body.player-mode .wrap{ max-width:1100px; }
     body.player-mode .grid{ grid-template-columns:1fr; max-width:1100px; margin:0 auto; }
+    body.player-mode #coachTopCard{ display:none !important; } /* hide View Video in player mode */
+
+    /* Player mode: force the player slot to be full width */
     body.player-mode .playerWrap{ max-width:1100px; margin:0 auto; }
-    body.player-mode .playerBox{ max-width:1100px; margin:0 auto; }
-    body.player-mode .chapters{ max-width:1100px; margin:0 auto; }
+    body.player-mode #playerModeSlot{ width:100%; }
+    body.player-mode #playerModeSlot .playerBox{
+      width:100%;
+      max-width:1100px;
+      margin:0 auto;
+      aspect-ratio:16/9;
+    }
+
+    /* Stop the "small card" effect: give the player card a wider feel in player mode */
+    body.player-mode .card{ width:100%; }
+
   </style>
 </head>
 
@@ -253,7 +268,6 @@
       <div class="card" id="coachTopCard">
         <div class="sectionTitle">View Video</div>
 
-        <!-- Keep the iframe hosted here by default to avoid flicker -->
         <div class="playerBox" id="coachPlayerSlot">
           <div id="playerHost" class="playerBox" style="border:none;border-radius:0;background:transparent;aspect-ratio:auto;position:absolute;inset:0;">
             <div id="player"></div>
@@ -297,7 +311,6 @@
           <button id="clearSegs">Clear segments</button>
         </div>
 
-        <!-- Coach marking panel -->
         <div class="card" id="markPanel" style="padding:12px; margin-top:12px; background:rgba(2,6,23,.18);">
           <div class="label" style="margin-top:0;">Mark segment from the video (Coach mode)</div>
           <div class="btns" style="margin-top:8px;">
@@ -358,7 +371,7 @@
           </div>
         </div>
 
-        <!-- Player-mode slot (only used in player mode) -->
+        <!-- In player mode, the video is inserted here as full width -->
         <div id="playerModeSlot"></div>
 
         <div class="controls">
@@ -385,7 +398,6 @@
     </div>
   </div>
 
-  <!-- Instruction overlay -->
   <div class="overlay" id="overlay">
     <div class="overlayCard">
       <h2 class="overlayTitle" id="overlayTitle">Next clip</h2>
@@ -528,9 +540,6 @@
     const rew2Btn=document.getElementById("rew2");
     const fwd2Btn=document.getElementById("fwd2");
 
-    // NOTE: We keep the iframe hosted in coachTopCard to avoid flicker.
-    // In player mode, we move the whole coachTopCard iframe area into playerModeSlot.
-    // Instead of moving the iframe itself, we move its immediate container.
     function applyModeUI(){
       if(mode==="player"){
         document.body.classList.add("player-mode");
@@ -539,7 +548,7 @@
         if (coachHintBelow) coachHintBelow.style.display="none";
         if (previewPlaceholder) previewPlaceholder.classList.add("hidden");
 
-        // Move the coach player slot into playerModeSlot (only if needed)
+        // Move the player box into the player slot (big)
         if (playerModeSlot && coachPlayerSlot && coachPlayerSlot.parentElement !== playerModeSlot){
           playerModeSlot.appendChild(coachPlayerSlot);
         }
@@ -553,9 +562,8 @@
         if (coachHintBelow) coachHintBelow.style.display="block";
         if (previewPlaceholder) previewPlaceholder.classList.toggle("hidden", isLoadedReplay);
 
-        // Put the player slot back under the top card
+        // Return the player to coach top card
         if (coachTopCard && coachPlayerSlot && coachPlayerSlot.parentElement !== coachTopCard){
-          // Insert after the title (keep layout)
           const title = coachTopCard.querySelector(".sectionTitle");
           if (title && title.nextSibling){
             coachTopCard.insertBefore(coachPlayerSlot, title.nextSibling);
@@ -660,10 +668,7 @@
         setStatus(builderStatus,"Player is not ready yet. Wait a second, then try again.","warn");
         return;
       }
-
-      // cue instead of play: loads the video without autoplay (best for scrubbing + marking)
       player.cueVideoById({ videoId: videoId, startSeconds: 0 });
-
       setStatus(builderStatus,"Video loaded above. Scrub and pause, then use Set Start and Set End.","ok");
       refreshShareControls();
     }
@@ -845,7 +850,7 @@
       }
     });
 
-    function showInstruction(index, startPlayingAfter){
+    function showInstruction(index){
       if(!isLoadedReplay || segments.length===0) return;
       const i=Math.max(0,Math.min(index,segments.length-1));
       pendingIndex=i;
@@ -858,14 +863,13 @@
       overlayText.textContent=note;
       overlayMeta.textContent=`Clip ${i+1} of ${segments.length} · ${secondsToHMS(s.start)} to ${secondsToHMS(s.end)}`;
 
-      overlayPlay.textContent=startPlayingAfter ? "Play clip" : "Play next clip";
       overlay.classList.add("show");
       player.pauseVideo();
     }
 
     function hideOverlay(){ overlay.classList.remove("show"); }
-    overlayClose.addEventListener("click", hideOverlay);
-    overlayPlay.addEventListener("click", ()=>{
+    document.getElementById("overlayClose").addEventListener("click", hideOverlay);
+    document.getElementById("overlayPlay").addEventListener("click", ()=>{
       if(pendingIndex===null) return;
       hideOverlay();
       gotoSegment(pendingIndex, true);
@@ -896,7 +900,7 @@
       updateNowPlaying();
       startTicking();
 
-      if(showNotes) showInstruction(0, true);
+      if(showNotes) showInstruction(0);
 
       applyModeUI();
     }
@@ -940,7 +944,6 @@
       const cuts=params.get("cuts");
       const labels=params.get("labels");
       const notes=params.get("notes");
-      const autoplay=params.get("autoplay")==="1";
 
       const m=params.get("mode");
       const sn=params.get("shownotes");
@@ -981,8 +984,6 @@
       }
 
       loadReplayIntoPlayer(id,segs);
-
-      if(!autoplay && player && player.pauseVideo) player.pauseVideo();
     }
 
     function onYouTubeIframeAPIReady(){
