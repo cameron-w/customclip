@@ -1,253 +1,1045 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Custom Replay</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Custom Replay</title>
 
-<style>
-:root{
-  --bg:#0b0f17;
-  --panel:#111827;
-  --muted:#94a3b8;
-  --text:#e5e7eb;
-  --accent:#60a5fa;
-  --border:rgba(148,163,184,.18);
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-  background:radial-gradient(1200px 700px at 15% 10%, rgba(96,165,250,.18), transparent 55%),var(--bg);
-  color:var(--text);
-}
-.hidden{display:none!important}
+  <style>
+    :root{
+      --bg:#0b0f17;
+      --panel:#111827;
+      --muted:#94a3b8;
+      --text:#e5e7eb;
+      --accent:#60a5fa;
+      --ok:#34d399;
+      --warn:#fbbf24;
+      --bad:#fb7185;
+      --border:rgba(148,163,184,.18);
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 700px at 15% 10%, rgba(96,165,250,.18), transparent 55%),
+        radial-gradient(900px 600px at 90% 5%, rgba(52,211,153,.12), transparent 55%),
+        var(--bg);
+      color:var(--text);
+    }
+    .wrap{ max-width:1100px; margin:0 auto; padding:22px 16px 40px; }
+    header{ display:flex; gap:12px; flex-wrap:wrap; align-items:baseline; justify-content:space-between; margin-bottom:14px; }
+    h1{ margin:0; font-size:18px; letter-spacing:.2px; font-weight:700; }
+    .tag{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border:1px solid var(--border); border-radius:999px;
+      color:var(--muted); font-size:12px; background:rgba(17,24,39,.6);
+    }
 
-.wrap{max-width:1200px;margin:auto;padding:20px}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-h1{margin:0;font-size:18px}
-.tag{font-size:12px;color:var(--muted);border:1px solid var(--border);padding:6px 10px;border-radius:999px}
+    /* Base grid: B and C layout */
+    .grid{ display:grid; grid-template-columns:420px 1fr; gap:14px; }
 
-.grid{display:grid;grid-template-columns:420px 1fr;gap:14px}
+    @media (max-width:980px){
+      .grid{ grid-template-columns:1fr; }
+    }
 
-/* PLAYER MODE LAYOUT */
-body.player-mode .grid{
-  grid-template-columns:1fr;
-}
-body.player-mode .playerWrap,
-body.player-mode .playerBox,
-body.player-mode .chapters{
-  max-width:960px;
-  margin:auto;
-}
+    .card{
+      background:rgba(17,24,39,.78);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:14px;
+      box-shadow:0 12px 30px rgba(0,0,0,.18);
+      backdrop-filter:blur(8px);
+    }
 
-.card{
-  background:rgba(17,24,39,.85);
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:14px;
-}
+    .label{ font-size:12px; color:var(--muted); margin:10px 0 6px; }
 
-.label{font-size:12px;color:var(--muted);margin:10px 0 6px}
-input,textarea{
-  width:100%;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid var(--border);
-  background:rgba(2,6,23,.4);
-  color:var(--text);
-}
-textarea{resize:vertical}
+    input[type="text"], textarea{
+      width:100%;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(2,6,23,.35);
+      color:var(--text);
+      outline:none;
+    }
+    textarea{ min-height:76px; resize:vertical; }
 
-.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-button{
-  padding:8px 12px;
-  border-radius:10px;
-  border:1px solid var(--border);
-  background:rgba(2,6,23,.4);
-  color:var(--text);
-  font-weight:600;
-  cursor:pointer;
-}
-button.primary{background:rgba(96,165,250,.2)}
+    .row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:end; }
+    .row3{ display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:10px; align-items:end; }
+    @media (max-width:520px){ .row,.row3{ grid-template-columns:1fr; } }
 
-.playerBox{
-  aspect-ratio:16/9;
-  border-radius:16px;
-  overflow:hidden;
-  border:1px solid var(--border);
-}
-#player{width:100%;height:100%}
+    .btns{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    button{
+      cursor:pointer;
+      border:1px solid var(--border);
+      background:rgba(2,6,23,.35);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      font-weight:700;
+      font-size:13px;
+    }
+    button.primary{ background:rgba(96,165,250,.18); border-color:rgba(96,165,250,.35); }
+    button.good{ background:rgba(52,211,153,.14); border-color:rgba(52,211,153,.35); }
+    button:disabled{ cursor:not-allowed; opacity:.55; }
 
-.controls{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .hint{ margin-top:10px; font-size:12px; color:var(--muted); line-height:1.35; }
+    .status{
+      margin-top:10px;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(2,6,23,.35);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.35;
+      white-space:pre-wrap;
+    }
+    .status.ok{ border-color:rgba(52,211,153,.35); }
+    .status.warn{ border-color:rgba(251,191,36,.35); }
+    .status.bad{ border-color:rgba(251,113,133,.35); }
 
-.chapters{margin-top:14px;display:grid;gap:8px}
-.chapter{
-  padding:10px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  cursor:pointer;
-}
-.chapter.active{
-  background:rgba(96,165,250,.2);
-}
+    .segments{ margin-top:10px; border-top:1px solid var(--border); padding-top:10px; }
+    .seg{
+      display:grid;
+      grid-template-columns:1.2fr 1fr auto;
+      gap:10px;
+      align-items:center;
+      padding:10px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      margin-top:10px;
+      background:rgba(2,6,23,.25);
+    }
+    @media (max-width:520px){ .seg{ grid-template-columns:1fr; } }
+    .seg small{ color:var(--muted); }
+    .seg .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:6px 10px; border-radius:999px; border:1px solid var(--border);
+      color:var(--muted); font-size:12px; width:fit-content;
+    }
 
-/* Overlay */
-.overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(2,6,23,.75);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
-}
-.overlay.show{display:flex}
-.overlayCard{
-  max-width:600px;
-  background:rgba(17,24,39,.95);
-  padding:20px;
-  border-radius:18px;
-  border:1px solid var(--border);
-}
-</style>
+    .playerWrap{ display:grid; gap:14px; }
+
+    .playerBox{
+      border-radius:16px;
+      overflow:hidden;
+      border:1px solid var(--border);
+      background:rgba(2,6,23,.25);
+      aspect-ratio:16/9;
+      position:relative;
+    }
+    #player{ position:absolute; inset:0; width:100%; height:100%; }
+
+    .controls{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    }
+    .controls .left,.controls .right{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .mini{
+      font-size:12px; color:var(--muted);
+      padding:6px 10px; border:1px solid var(--border);
+      border-radius:999px; background:rgba(2,6,23,.25);
+    }
+    .kbd{
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      font-size:11px;
+      padding:2px 6px;
+      border:1px solid var(--border);
+      border-radius:6px;
+      background:rgba(2,6,23,.35);
+      color:var(--muted);
+    }
+
+    /* Chapters list */
+    .chapters{
+      border-top:1px solid var(--border);
+      padding-top:12px;
+      display:grid;
+      gap:8px;
+    }
+    .chapterBtn{
+      width:100%;
+      text-align:left;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(2,6,23,.25);
+      color:var(--text);
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      font-weight:700;
+    }
+    .chapterBtn small{ color:var(--muted); font-weight:600; }
+    .chapterBtn.active{
+      border-color:rgba(96,165,250,.5);
+      background:rgba(96,165,250,.14);
+    }
+
+    /* Overlay instruction card */
+    .overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(2,6,23,.75);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      z-index:9999;
+    }
+    .overlay.show{ display:flex; }
+    .overlayCard{
+      width:min(720px, 100%);
+      border-radius:18px;
+      border:1px solid var(--border);
+      background:rgba(17,24,39,.92);
+      box-shadow:0 18px 50px rgba(0,0,0,.35);
+      padding:16px;
+    }
+    .overlayTitle{
+      font-size:18px;
+      font-weight:900;
+      margin:0 0 8px;
+    }
+    .overlayText{
+      margin:0;
+      color:var(--text);
+      line-height:1.35;
+      white-space:pre-wrap;
+    }
+    .overlayMeta{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .overlayBtns{
+      margin-top:14px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .hidden{ display:none !important; }
+
+    /* A: coach top video card spans full width above B and C */
+    #coachTopCard{ grid-column: 1 / -1; }
+    #coachTopCard.hidden{ display:none !important; }
+    #coachTopCard .playerBox{ max-width:1100px; margin:0 auto; }
+
+    /* Player mode: single column, big video */
+    body.player-mode .grid{ grid-template-columns:1fr; max-width:1100px; margin:0 auto; }
+    body.player-mode .playerWrap{ max-width:1100px; margin:0 auto; }
+    body.player-mode .playerBox{ max-width:1100px; margin:0 auto; }
+    body.player-mode .chapters{ max-width:1100px; margin:0 auto; }
+
+  </style>
 </head>
 
 <body>
-<div class="wrap">
-<header>
-  <div>
-    <h1>Custom Replay</h1>
-    <div class="tag" id="modeTag">Coach mode</div>
-  </div>
-  <div class="tag">N next · P prev · Space play</div>
-</header>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1 id="pageTitle">Custom Replays</h1>
+        <div class="tag" id="modeTag">Coach mode</div>
+      </div>
+      <div class="tag">Keys: <span class="kbd">N</span> next, <span class="kbd">P</span> prev, <span class="kbd">Space</span> play/pause</div>
+    </header>
 
-<div class="grid">
+    <div class="grid">
 
-<!-- BUILDER -->
-<div class="card" id="builder">
-  <div class="label">YouTube URL</div>
-  <input id="yt">
+      <!-- A: Coach top video (visible in coach mode only) -->
+      <div class="card" id="coachTopCard">
+        <div class="playerBox" id="coachPlayerSlot"></div>
+        <div class="hint" style="margin-top:10px;">
+          Coach view: mark timings while watching above, then build segments below.
+        </div>
+      </div>
 
-  <div class="label">Title</div>
-  <input id="title">
+      <!-- B: Builder (Coach mode only) -->
+      <div class="card" id="builderCard">
+        <div class="label">YouTube URL or Video ID</div>
+        <input id="ytInput" type="text" placeholder="Paste a YouTube link (or just the video ID)" />
 
-  <div class="label">Instruction</div>
-  <textarea id="note"></textarea>
+        <div class="row3" style="margin-top:10px;">
+          <div>
+            <div class="label">Title (optional)</div>
+            <input id="segLabel" type="text" placeholder="Defensive line speed" />
+          </div>
+          <div>
+            <div class="label">Start (mm:ss or hh:mm:ss)</div>
+            <input id="segStart" type="text" placeholder="02:00" />
+          </div>
+          <div>
+            <div class="label">End (mm:ss or hh:mm:ss)</div>
+            <input id="segEnd" type="text" placeholder="03:00" />
+          </div>
+        </div>
 
-  <div class="label">Start</div>
-  <input id="start">
+        <div class="label">Instruction text (shown before this clip)</div>
+        <textarea id="segNote" placeholder="What should the player look for in this clip?"></textarea>
 
-  <div class="label">End</div>
-  <input id="end">
+        <div class="btns">
+          <button id="addSeg" class="primary">Add segment</button>
+          <button id="clearSegs">Clear segments</button>
+        </div>
 
-  <div class="btns">
-    <button id="add" class="primary">Add segment</button>
-  </div>
+        <!-- Coach-only Mark Segment Panel -->
+        <div class="card" id="markPanel" style="padding:12px; margin-top:12px; background:rgba(2,6,23,.18);">
+          <div class="label" style="margin-top:0;">Mark segment from the video (Coach mode)</div>
+          <div class="btns" style="margin-top:8px;">
+            <button id="rew2" disabled>-2s</button>
+            <button id="fwd2" disabled>+2s</button>
+            <button id="markStart" class="primary" disabled>Set Start</button>
+            <button id="markEnd" class="primary" disabled>Set End</button>
+          </div>
+          <div class="hint" style="margin-top:8px;">
+            Pause at the moment, click Set Start. Keep watching, pause, click Set End. Then add title and instruction text and click Add segment.
+          </div>
+        </div>
 
-  <!-- MARK PANEL -->
-  <div class="label">Mark from video</div>
-  <div class="btns">
-    <button id="back">-2s</button>
-    <button id="fwd">+2s</button>
-    <button id="markStart" class="primary">Set Start</button>
-    <button id="markEnd" class="primary">Set End</button>
-  </div>
-</div>
+        <div class="label" style="margin-top:12px;">Share settings</div>
+        <div class="row">
+          <label class="tag" style="justify-content:space-between; width:100%;">
+            <span>Open shared link in Player mode</span>
+            <input id="playerModeLink" type="checkbox" style="transform:scale(1.2); accent-color:#60a5fa;" checked />
+          </label>
+          <label class="tag" style="justify-content:space-between; width:100%;">
+            <span>Show instruction card before each clip</span>
+            <input id="showNotesLink" type="checkbox" style="transform:scale(1.2); accent-color:#60a5fa;" checked />
+          </label>
+        </div>
 
-<!-- PLAYER -->
-<div class="card playerWrap">
-  <div class="playerBox"><div id="player"></div></div>
+        <div class="hint">
+          This plays using the official YouTube embed player. It does not reupload content.
+          The replay auto-jumps between your ranges.
+        </div>
 
-  <div class="controls">
-    <button id="prev">Prev</button>
-    <button id="play">Play</button>
-    <button id="pause">Pause</button>
-    <button id="next">Next</button>
-  </div>
+        <div class="segments" id="segmentsList"></div>
 
-  <div class="chapters" id="chapters"></div>
-</div>
+        <div class="label" style="margin-top:14px;">Share link (one URL)</div>
+        <input id="shareLink" type="text" readonly />
 
-</div>
-</div>
+        <div class="btns">
+          <button id="copyLink" class="good" disabled>Copy link</button>
+          <button id="openLink" disabled>Open link</button>
+          <button id="loadNow" class="primary" disabled>Load into player</button>
+        </div>
 
-<!-- OVERLAY -->
-<div class="overlay" id="overlay">
-  <div class="overlayCard">
-    <h2 id="oTitle"></h2>
-    <p id="oText"></p>
-    <div class="btns">
-      <button id="oPlay" class="primary">Play clip</button>
+        <div id="builderStatus" class="status">Paste a YouTube link, add segments, then share one link.</div>
+
+        <div class="hint" style="margin-top:10px;">
+          Times accepted: <b>ss</b>, <b>mm:ss</b>, <b>hh:mm:ss</b>. End must be greater than start.
+        </div>
+      </div>
+
+      <!-- C: Player area (video appears here in player mode, controls and chapters always here) -->
+      <div class="card playerWrap">
+        <!-- Player-mode slot -->
+        <div id="playerModeSlot"></div>
+
+        <div class="controls">
+          <div class="left">
+            <button id="prevBtn" disabled>Prev</button>
+            <button id="playBtn" disabled>Play</button>
+            <button id="pauseBtn" disabled>Pause</button>
+            <button id="nextBtn" disabled>Next</button>
+          </div>
+          <div class="right">
+            <div class="mini" id="nowPlaying">No replay loaded</div>
+          </div>
+        </div>
+
+        <div id="chapters" class="chapters"></div>
+
+        <div id="playerStatus" class="status">Load a replay to start. If a video does not play, embedding may be disabled by the uploader.</div>
+
+        <div class="hint" id="coachHintBelow" style="display:none;">
+          Coach mode: video is shown at the top (A). Player mode: video is shown here.
+        </div>
+      </div>
+
     </div>
   </div>
-</div>
 
-<script src="https://www.youtube.com/iframe_api"></script>
-<script>
-let player,segments=[],idx=0,mode="coach";
-const $=id=>document.getElementById(id);
+  <!-- Shared player host: this is moved between coachTopCard and player area -->
+  <div class="playerBox hidden" id="playerHost">
+    <div id="player"></div>
+  </div>
 
-function toMMSS(s){
-  s=Math.round(s);
-  const m=Math.floor(s/60),sec=s%60;
-  return `${m}:${String(sec).padStart(2,"0")}`;
-}
+  <!-- Instruction overlay -->
+  <div class="overlay" id="overlay">
+    <div class="overlayCard">
+      <h2 class="overlayTitle" id="overlayTitle">Next clip</h2>
+      <p class="overlayText" id="overlayText"></p>
+      <div class="overlayMeta" id="overlayMeta"></div>
+      <div class="overlayBtns">
+        <button id="overlayClose">Close</button>
+        <button id="overlayPlay" class="primary">Play clip</button>
+      </div>
+    </div>
+  </div>
 
-function applyMode(){
-  document.body.classList.toggle("player-mode",mode==="player");
-  $("builder").classList.toggle("hidden",mode==="player");
-  $("modeTag").textContent=mode==="player"?"Player mode":"Coach mode";
-}
+  <script>
+    // -------------------------
+    // Utilities
+    // -------------------------
+    function parseTimeToSeconds(input){
+      if(!input) return null;
+      const s=String(input).trim();
+      if(!s) return null;
+      if(/^\d+$/.test(s)) return Number(s);
+      const parts=s.split(":").map(p=>p.trim());
+      if(parts.some(p=>p==="" || isNaN(Number(p)))) return null;
+      const nums=parts.map(Number);
+      if(nums.length===2){
+        const [mm,ss]=nums; return mm*60+ss;
+      }
+      if(nums.length===3){
+        const [hh,mm,ss]=nums; return hh*3600+mm*60+ss;
+      }
+      return null;
+    }
+    function secondsToHMS(sec){
+      sec=Math.max(0,Math.floor(sec));
+      const h=Math.floor(sec/3600);
+      const m=Math.floor((sec%3600)/60);
+      const s=sec%60;
+      if(h>0) return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+      return `${m}:${String(s).padStart(2,"0")}`;
+    }
+    function extractYouTubeId(input){
+      const raw=String(input||"").trim();
+      if(!raw) return null;
+      if(/^[a-zA-Z0-9_-]{11}$/.test(raw)) return raw;
+      try{
+        const u=new URL(raw);
+        const host=u.hostname.replace("www.","").replace("m.","");
+        if(host==="youtu.be"){
+          const id=u.pathname.split("/").filter(Boolean)[0];
+          if(id && /^[a-zA-Z0-9_-]{11}$/.test(id)) return id;
+        }
+        if(host.endsWith("youtube.com")){
+          const v=u.searchParams.get("v");
+          if(v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+          const parts=u.pathname.split("/").filter(Boolean);
+          const shortsIdx=parts.indexOf("shorts");
+          if(shortsIdx>=0 && parts[shortsIdx+1] && /^[a-zA-Z0-9_-]{11}$/.test(parts[shortsIdx+1])) return parts[shortsIdx+1];
+          const embedIdx=parts.indexOf("embed");
+          if(embedIdx>=0 && parts[embedIdx+1] && /^[a-zA-Z0-9_-]{11}$/.test(parts[embedIdx+1])) return parts[embedIdx+1];
+        }
+      }catch(e){}
+      const m=raw.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+      if(m) return m[1];
+      return null;
+    }
+    function setStatus(el,msg,type){
+      el.textContent=msg;
+      el.classList.remove("ok","warn","bad");
+      if(type) el.classList.add(type);
+    }
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
 
-window.onYouTubeIframeAPIReady=()=>{
-  player=new YT.Player("player",{events:{onReady:()=>{}}});
-};
+    // -------------------------
+    // State
+    // -------------------------
+    let segments=[]; // { label, start, end, note }
+    let videoId=null;
 
-$("markStart").onclick=()=>{$("start").value=toMMSS(player.getCurrentTime())}
-$("markEnd").onclick=()=>{$("end").value=toMMSS(player.getCurrentTime())}
-$("back").onclick=()=>player.seekTo(Math.max(0,player.getCurrentTime()-2),true)
-$("fwd").onclick=()=>player.seekTo(player.getCurrentTime()+2,true)
+    let player=null;
+    let activeIndex=0;
+    let tickTimer=null;
+    let isLoadedReplay=false;
 
-$("add").onclick=()=>{
-  const s=parseInt($("start").value.split(":")[0])*60+parseInt($("start").value.split(":")[1]);
-  const e=parseInt($("end").value.split(":")[0])*60+parseInt($("end").value.split(":")[1]);
-  segments.push({title:$("title").value,note:$("note").value,start:s,end:e});
-  render();
-};
+    let pendingIndex=null;
+    let showNotes=true;
 
-function render(){
-  $("chapters").innerHTML="";
-  segments.forEach((seg,i)=>{
-    const d=document.createElement("div");
-    d.className="chapter"+(i===idx?" active":"");
-    d.innerHTML=`${seg.title}<br><small>${toMMSS(seg.start)}–${toMMSS(seg.end)}</small>`;
-    d.onclick=()=>show(i);
-    $("chapters").appendChild(d);
-  });
-}
+    let mode="coach"; // coach | player
 
-function show(i){
-  idx=i;
-  $("oTitle").textContent=segments[i].title;
-  $("oText").textContent=segments[i].note;
-  $("overlay").classList.add("show");
-}
+    // -------------------------
+    // DOM
+    // -------------------------
+    const builderCard=document.getElementById("builderCard");
+    const ytInput=document.getElementById("ytInput");
+    const segLabel=document.getElementById("segLabel");
+    const segStart=document.getElementById("segStart");
+    const segEnd=document.getElementById("segEnd");
+    const segNote=document.getElementById("segNote");
 
-$("oPlay").onclick=()=>{
-  $("overlay").classList.remove("show");
-  const s=segments[idx];
-  player.seekTo(s.start,true);
-  player.playVideo();
-};
+    const addSeg=document.getElementById("addSeg");
+    const clearSegs=document.getElementById("clearSegs");
+    const segmentsList=document.getElementById("segmentsList");
 
-$("play").onclick=()=>player.playVideo();
-$("pause").onclick=()=>player.pauseVideo();
-$("next").onclick=()=>idx<segments.length-1&&show(idx+1);
-$("prev").onclick=()=>idx>0&&show(idx-1);
+    const shareLink=document.getElementById("shareLink");
+    const copyLink=document.getElementById("copyLink");
+    const openLink=document.getElementById("openLink");
+    const loadNow=document.getElementById("loadNow");
 
-applyMode();
-</script>
+    const builderStatus=document.getElementById("builderStatus");
+    const playerStatus=document.getElementById("playerStatus");
+    const nowPlaying=document.getElementById("nowPlaying");
+
+    const prevBtn=document.getElementById("prevBtn");
+    const playBtn=document.getElementById("playBtn");
+    const pauseBtn=document.getElementById("pauseBtn");
+    const nextBtn=document.getElementById("nextBtn");
+
+    const chapters=document.getElementById("chapters");
+
+    const overlay=document.getElementById("overlay");
+    const overlayTitle=document.getElementById("overlayTitle");
+    const overlayText=document.getElementById("overlayText");
+    const overlayMeta=document.getElementById("overlayMeta");
+    const overlayClose=document.getElementById("overlayClose");
+    const overlayPlay=document.getElementById("overlayPlay");
+
+    const modeTag=document.getElementById("modeTag");
+    const pageTitle=document.getElementById("pageTitle");
+
+    const playerModeLink=document.getElementById("playerModeLink");
+    const showNotesLink=document.getElementById("showNotesLink");
+
+    // A layout: player host moves between coach top and player mode
+    const coachTopCard=document.getElementById("coachTopCard");
+    const coachPlayerSlot=document.getElementById("coachPlayerSlot");
+    const playerModeSlot=document.getElementById("playerModeSlot");
+    const playerHost=document.getElementById("playerHost");
+    const coachHintBelow=document.getElementById("coachHintBelow");
+
+    // Marking panel (Coach mode)
+    const markPanel=document.getElementById("markPanel");
+    const markStartBtn=document.getElementById("markStart");
+    const markEndBtn=document.getElementById("markEnd");
+    const rew2Btn=document.getElementById("rew2");
+    const fwd2Btn=document.getElementById("fwd2");
+
+    // -------------------------
+    // Mode UI + layout move
+    // -------------------------
+    function applyModeUI(){
+      if(mode==="player"){
+        document.body.classList.add("player-mode");
+        builderCard.classList.add("hidden");
+        if (markPanel) markPanel.classList.add("hidden");
+        if (coachTopCard) coachTopCard.classList.add("hidden");
+        if (coachHintBelow) coachHintBelow.style.display="none";
+
+        // Move player into player area (C)
+        if (playerModeSlot && playerHost) {
+          playerModeSlot.appendChild(playerHost);
+          playerHost.classList.remove("hidden");
+        }
+
+        modeTag.textContent="Player mode";
+        pageTitle.textContent="Custom Replay";
+      }else{
+        document.body.classList.remove("player-mode");
+        builderCard.classList.remove("hidden");
+        if (markPanel) markPanel.classList.remove("hidden");
+        if (coachTopCard) coachTopCard.classList.remove("hidden");
+        if (coachHintBelow) coachHintBelow.style.display="block";
+
+        // Move player into coach top area (A)
+        if (coachPlayerSlot && playerHost) {
+          coachPlayerSlot.appendChild(playerHost);
+          playerHost.classList.remove("hidden");
+        }
+
+        modeTag.textContent="Coach mode";
+        pageTitle.textContent="Custom Replays";
+      }
+    }
+
+    // -------------------------
+    // Render
+    // -------------------------
+    function renderSegments(){
+      segmentsList.innerHTML="";
+      if(segments.length===0){
+        segmentsList.innerHTML=`<div class="hint">No segments yet. Add one above.</div>`;
+      }else{
+        segments.forEach((s,idx)=>{
+          const div=document.createElement("div");
+          div.className="seg";
+          const label=s.label ? s.label : `Segment ${idx+1}`;
+          const notePreview=s.note ? s.note.slice(0,70) + (s.note.length>70 ? "…" : "") : "No instruction text";
+          div.innerHTML=`
+            <div>
+              <div style="font-weight:800;">${escapeHtml(label)}</div>
+              <small>${secondsToHMS(s.start)} to ${secondsToHMS(s.end)}</small>
+              <div style="margin-top:6px; color:var(--muted); font-size:12px;">${escapeHtml(notePreview)}</div>
+            </div>
+            <div class="pill">Start <b>${secondsToHMS(s.start)}</b> · End <b>${secondsToHMS(s.end)}</b></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button data-action="up" data-idx="${idx}" ${idx===0?"disabled":""}>Up</button>
+              <button data-action="down" data-idx="${idx}" ${idx===segments.length-1?"disabled":""}>Down</button>
+              <button data-action="del" data-idx="${idx}">Remove</button>
+            </div>
+          `;
+          segmentsList.appendChild(div);
+        });
+      }
+      renderChapters();
+    }
+
+    function renderChapters(){
+      chapters.innerHTML="";
+      if(!isLoadedReplay || segments.length===0){
+        chapters.innerHTML=`<div class="hint">Chapters will appear here once a replay is loaded.</div>`;
+        return;
+      }
+      segments.forEach((s,idx)=>{
+        const btn=document.createElement("button");
+        btn.className="chapterBtn" + (idx===activeIndex ? " active" : "");
+        const title=s.label ? s.label : `Segment ${idx+1}`;
+        btn.innerHTML=`
+          <span>${escapeHtml(title)}<br><small>${secondsToHMS(s.start)} to ${secondsToHMS(s.end)}</small></span>
+          <span style="color:var(--muted); font-weight:800;">${idx===activeIndex ? "Now" : "Play"}</span>
+        `;
+        btn.addEventListener("click", ()=>{
+          if(showNotes){
+            showInstruction(idx, true);
+          }else{
+            gotoSegment(idx, true);
+          }
+        });
+        chapters.appendChild(btn);
+      });
+    }
+
+    // -------------------------
+    // Share link
+    // -------------------------
+    function buildShareUrl(){
+      const base=new URL(window.location.href);
+      base.searchParams.set("v", videoId || "");
+      base.searchParams.set("cuts", segments.map(s=>`${s.start}-${s.end}`).join(","));
+      base.searchParams.set("labels", segments.map(s=>(s.label||"").replaceAll("|","/")).join("|"));
+      base.searchParams.set("notes", segments.map(s=>(s.note||"").replaceAll("|","/")).join("|"));
+      base.searchParams.set("autoplay","1");
+      base.searchParams.set("mode", playerModeLink.checked ? "player" : "coach");
+      base.searchParams.set("shownotes", showNotesLink.checked ? "1" : "0");
+      return base.toString();
+    }
+
+    function refreshShareControls(){
+      const ok=Boolean(videoId) && segments.length>0;
+      copyLink.disabled=!ok;
+      openLink.disabled=!ok;
+      loadNow.disabled=!ok;
+
+      if(ok){
+        const url=buildShareUrl();
+        shareLink.value=url;
+        setStatus(builderStatus, `Ready. Share one link.\nVideo: ${videoId}\nSegments: ${segments.length}`, "ok");
+      }else{
+        shareLink.value="";
+        if(!videoId) setStatus(builderStatus,"Paste a YouTube link (or ID) first.","warn");
+        else setStatus(builderStatus,"Add at least one segment.","warn");
+      }
+    }
+
+    // -------------------------
+    // Builder actions
+    // -------------------------
+    addSeg.addEventListener("click", ()=>{
+      const id=extractYouTubeId(ytInput.value);
+      if(!id){ setStatus(builderStatus,"Could not find a valid YouTube video ID in that input.","bad"); return; }
+      videoId=id;
+
+      const st=parseTimeToSeconds(segStart.value);
+      const en=parseTimeToSeconds(segEnd.value);
+      if(st===null || en===null){ setStatus(builderStatus,"Start and end must be valid times, for example 2:00 and 3:15.","bad"); return; }
+      if(en<=st){ setStatus(builderStatus,"End must be greater than start.","bad"); return; }
+
+      const lbl=segLabel.value.trim();
+      const note=segNote.value.trim();
+      segments.push({ label: lbl, start: st, end: en, note });
+
+      segLabel.value="";
+      segStart.value="";
+      segEnd.value="";
+      segNote.value="";
+
+      renderSegments();
+      refreshShareControls();
+    });
+
+    clearSegs.addEventListener("click", ()=>{
+      segments=[];
+      activeIndex=0;
+      renderSegments();
+      refreshShareControls();
+      setStatus(builderStatus,"Segments cleared.","warn");
+    });
+
+    segmentsList.addEventListener("click",(e)=>{
+      const btn=e.target.closest("button");
+      if(!btn) return;
+      const idx=Number(btn.dataset.idx);
+      const action=btn.dataset.action;
+      if(Number.isNaN(idx)) return;
+
+      if(action==="del") segments.splice(idx,1);
+      else if(action==="up" && idx>0){
+        const t=segments[idx-1]; segments[idx-1]=segments[idx]; segments[idx]=t;
+      }else if(action==="down" && idx<segments.length-1){
+        const t=segments[idx+1]; segments[idx+1]=segments[idx]; segments[idx]=t;
+      }
+
+      renderSegments();
+      refreshShareControls();
+    });
+
+    ytInput.addEventListener("input", ()=>{
+      const id=extractYouTubeId(ytInput.value);
+      if(id) videoId=id;
+      refreshShareControls();
+    });
+
+    playerModeLink.addEventListener("change", refreshShareControls);
+    showNotesLink.addEventListener("change", refreshShareControls);
+
+    copyLink.addEventListener("click", async ()=>{
+      try{
+        await navigator.clipboard.writeText(shareLink.value);
+        setStatus(builderStatus,"Copied share link to clipboard.","ok");
+      }catch(e){
+        shareLink.select();
+        setStatus(builderStatus,"Could not auto-copy. The link is selected, press Ctrl+C.","warn");
+      }
+    });
+
+    openLink.addEventListener("click", ()=> window.open(shareLink.value,"_blank","noopener,noreferrer"));
+
+    loadNow.addEventListener("click", ()=>{
+      if(!videoId || segments.length===0) return;
+      loadReplayIntoPlayer(videoId, segments);
+    });
+
+    // -------------------------
+    // Player logic
+    // -------------------------
+    function enablePlayerControls(enabled){
+      prevBtn.disabled=!enabled;
+      playBtn.disabled=!enabled;
+      pauseBtn.disabled=!enabled;
+      nextBtn.disabled=!enabled;
+    }
+
+    function updateNowPlaying(){
+      if(!isLoadedReplay || segments.length===0){
+        nowPlaying.textContent="No replay loaded";
+        return;
+      }
+      const s=segments[activeIndex];
+      const label=s.label ? s.label : `Segment ${activeIndex+1}`;
+      nowPlaying.textContent=`${label} (${secondsToHMS(s.start)} to ${secondsToHMS(s.end)})`;
+      renderChapters();
+    }
+
+    function gotoSegment(index, play=true){
+      if(!isLoadedReplay || segments.length===0) return;
+      const i=Math.max(0,Math.min(index,segments.length-1));
+      activeIndex=i;
+      const s=segments[activeIndex];
+      updateNowPlaying();
+      player.seekTo(s.start,true);
+      if(play) player.playVideo();
+    }
+
+    function nextSegment(){
+      if(!isLoadedReplay) return;
+      if(activeIndex < segments.length-1){
+        if(showNotes) showInstruction(activeIndex+1, true);
+        else gotoSegment(activeIndex+1, true);
+      }else{
+        player.pauseVideo();
+        setStatus(playerStatus,"Reached the final segment end.","ok");
+      }
+    }
+
+    function prevSegment(){
+      if(!isLoadedReplay) return;
+      if(activeIndex>0){
+        if(showNotes) showInstruction(activeIndex-1, true);
+        else gotoSegment(activeIndex-1, true);
+      }else{
+        if(showNotes) showInstruction(0, true);
+        else gotoSegment(0, true);
+      }
+    }
+
+    function startTicking(){
+      stopTicking();
+      tickTimer=setInterval(()=>{
+        if(!player || !isLoadedReplay || segments.length===0) return;
+        const s=segments[activeIndex];
+        const t=player.getCurrentTime ? player.getCurrentTime() : 0;
+
+        if(t < s.start - 0.35){
+          player.seekTo(s.start,true);
+          return;
+        }
+
+        if(t >= s.end - 0.12){
+          player.pauseVideo();
+          if(activeIndex < segments.length-1){
+            if(showNotes) showInstruction(activeIndex+1, false);
+            else gotoSegment(activeIndex+1, true);
+          }else{
+            setStatus(playerStatus,"Replay finished.","ok");
+          }
+        }
+      },200);
+    }
+
+    function stopTicking(){
+      if(tickTimer) clearInterval(tickTimer);
+      tickTimer=null;
+    }
+
+    prevBtn.addEventListener("click", prevSegment);
+    nextBtn.addEventListener("click", nextSegment);
+    playBtn.addEventListener("click", ()=> player && player.playVideo && player.playVideo());
+    pauseBtn.addEventListener("click", ()=> player && player.pauseVideo && player.pauseVideo());
+
+    // Keyboard
+    window.addEventListener("keydown",(e)=>{
+      if(e.target && (e.target.tagName==="INPUT" || e.target.tagName==="TEXTAREA")) return;
+      const k=e.key.toLowerCase();
+      if(k==="n") nextSegment();
+      if(k==="p") prevSegment();
+      if(k===" "){
+        e.preventDefault();
+        const state=player && player.getPlayerState ? player.getPlayerState() : null;
+        if(state===1) player.pauseVideo();
+        else player.playVideo();
+      }
+    });
+
+    // -------------------------
+    // Instruction overlay
+    // -------------------------
+    function showInstruction(index, startPlayingAfter){
+      if(!isLoadedReplay || segments.length===0) return;
+      const i=Math.max(0,Math.min(index,segments.length-1));
+      pendingIndex=i;
+
+      const s=segments[i];
+      const title=s.label ? s.label : `Segment ${i+1}`;
+      const note=s.note ? s.note : "Watch this clip and look for the key detail your coach mentioned.";
+
+      overlayTitle.textContent=title;
+      overlayText.textContent=note;
+      overlayMeta.textContent=`Clip ${i+1} of ${segments.length} · ${secondsToHMS(s.start)} to ${secondsToHMS(s.end)}`;
+
+      overlayPlay.textContent=startPlayingAfter ? "Play clip" : "Play next clip";
+      overlay.classList.add("show");
+      player.pauseVideo();
+    }
+
+    function hideOverlay(){
+      overlay.classList.remove("show");
+    }
+
+    overlayClose.addEventListener("click", hideOverlay);
+
+    overlayPlay.addEventListener("click", ()=>{
+      if(pendingIndex===null) return;
+      hideOverlay();
+      gotoSegment(pendingIndex, true);
+      pendingIndex=null;
+    });
+
+    // -------------------------
+    // Load replay
+    // -------------------------
+    function loadReplayIntoPlayer(id, segs){
+      if(!player){
+        setStatus(playerStatus,"Player is not ready yet. If this persists, refresh the page.","warn");
+        return;
+      }
+      if(!id || !segs || segs.length===0) return;
+
+      isLoadedReplay=true;
+      videoId=id;
+      segments=segs;
+      activeIndex=0;
+
+      renderSegments();
+      refreshShareControls();
+
+      setStatus(playerStatus,"Loaded replay. Auto-jump is active.","ok");
+      enablePlayerControls(true);
+
+      player.loadVideoById({ videoId: videoId, startSeconds: segments[0].start });
+      updateNowPlaying();
+      startTicking();
+
+      if(showNotes){
+        showInstruction(0, true);
+      }
+    }
+
+    // -------------------------
+    // Coach marking helpers
+    // -------------------------
+    function formatTimeForInput(sec){
+      sec = Math.max(0, Math.round(sec));
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      if (h > 0) return `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+      return `${m}:${String(s).padStart(2,"0")}`;
+    }
+
+    function getRoundedPlayerTime(){
+      if (!player || !player.getCurrentTime) return null;
+      const t = player.getCurrentTime();
+      if (typeof t !== "number" || Number.isNaN(t)) return null;
+      return Math.round(t);
+    }
+
+    function nudgePlayer(seconds){
+      if (!player || !player.getCurrentTime || !player.seekTo) return;
+      const t = player.getCurrentTime();
+      player.seekTo(Math.max(0, t + seconds), true);
+    }
+
+    if (markStartBtn) {
+      markStartBtn.addEventListener("click", () => {
+        const t = getRoundedPlayerTime();
+        if (t === null) return;
+        segStart.value = formatTimeForInput(t);
+      });
+    }
+    if (markEndBtn) {
+      markEndBtn.addEventListener("click", () => {
+        const t = getRoundedPlayerTime();
+        if (t === null) return;
+        segEnd.value = formatTimeForInput(t);
+      });
+    }
+    if (rew2Btn) rew2Btn.addEventListener("click", () => nudgePlayer(-2));
+    if (fwd2Btn) fwd2Btn.addEventListener("click", () => nudgePlayer(2));
+
+    // -------------------------
+    // Query params for shared links
+    // -------------------------
+    function loadFromQueryIfPresent(){
+      const params=new URLSearchParams(window.location.search);
+      const v=params.get("v");
+      const cuts=params.get("cuts");
+      const labels=params.get("labels");
+      const notes=params.get("notes");
+      const autoplay=params.get("autoplay")==="1";
+
+      // mode + shownotes
+      const m=params.get("mode");
+      const sn=params.get("shownotes");
+      mode = (m==="player") ? "player" : "coach";
+      showNotes = (sn==="0") ? false : true;
+      applyModeUI();
+
+      if(!v || !cuts) return;
+
+      const id=extractYouTubeId(v);
+      if(!id) return;
+
+      const cutParts=cuts.split(",").map(s=>s.trim()).filter(Boolean);
+      const labelParts=(labels||"").split("|");
+      const noteParts=(notes||"").split("|");
+
+      const segs=[];
+      for(let i=0;i<cutParts.length;i++){
+        const [a,b]=cutParts[i].split("-").map(x=>x.trim());
+        const st=parseTimeToSeconds(a);
+        const en=parseTimeToSeconds(b);
+        if(st===null || en===null || en<=st) continue;
+        segs.push({
+          label:(labelParts[i]||"").trim(),
+          note:(noteParts[i]||"").trim(),
+          start:st,
+          end:en
+        });
+      }
+      if(segs.length===0) return;
+
+      // Populate builder UI (if visible)
+      if(mode==="coach"){
+        ytInput.value=`https://www.youtube.com/watch?v=${id}`;
+        videoId=id;
+        segments=segs;
+        renderSegments();
+        refreshShareControls();
+      }
+
+      loadReplayIntoPlayer(id,segs);
+
+      if(!autoplay && player && player.pauseVideo) player.pauseVideo();
+    }
+
+    // -------------------------
+    // YouTube IFrame API init
+    // -------------------------
+    function onYouTubeIframeAPIReady(){
+      player=new YT.Player("player",{
+        height:"100%",
+        width:"100%",
+        playerVars:{ modestbranding:1, rel:0, playsinline:1 },
+        events:{
+          onReady:()=>{
+            setStatus(playerStatus,"Player ready. Build a replay or open a share link.","ok");
+            enablePlayerControls(false);
+
+            // Enable marking controls
+            if (markStartBtn) markStartBtn.disabled = false;
+            if (markEndBtn) markEndBtn.disabled = false;
+            if (rew2Btn) rew2Btn.disabled = false;
+            if (fwd2Btn) fwd2Btn.disabled = false;
+
+            // Default mode based on params
+            const params=new URLSearchParams(window.location.search);
+            const m=params.get("mode");
+            const sn=params.get("shownotes");
+            mode = (m==="player") ? "player" : "coach";
+            showNotes = (sn==="0") ? false : true;
+
+            // Apply mode layout and move playerHost
+            applyModeUI();
+
+            // Load replay if link has params
+            loadFromQueryIfPresent();
+          },
+          onError:(e)=>{
+            setStatus(playerStatus,`Playback error from YouTube (code ${e.data}).\nCommon cause: the uploader disabled embedding.`,"bad");
+          }
+        }
+      });
+    }
+    window.onYouTubeIframeAPIReady=onYouTubeIframeAPIReady;
+
+    // Inject API script
+    (function(){
+      const tag=document.createElement("script");
+      tag.src="https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+    })();
+
+    // Initial render
+    applyModeUI();
+    renderSegments();
+    refreshShareControls();
+  </script>
 </body>
 </html>
